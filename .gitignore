@@ -1,6 +1,7 @@
 # Specific to this project
 config.py
-
+scrape/reset_timestamp.py
+scrape/timestamp.dat
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
