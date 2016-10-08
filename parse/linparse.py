@@ -12,16 +12,25 @@ This script:
 import re
 from collections import deque
 
-SUITS = {0:'S', 1:'H', 2:'D', 3:'C'}
 PLAYERS = {0:'E', 1:'S', 2:'W', 3:'N'}
+SUITMAP = {'C':0, 'D':1, 'H':2, 'S':3}
 CARDMAP = {'2':2, '3':3, '4':4, '5':5, '6':6, '7':7, '8':8, '9':9, 'T':10, 'J':11, 'Q':12, 'K':13, 'A':14}
+
+# for readability...
+def rindex(list, elt):
+    return len(list) - list[::-1].index(elt) -1
+   
 
 class Card(object):
     """Represents a standard playing card.
     
     Attributes:
       suit: integer 0-3
-      rank: integer 1-13
+      rank: integer 2-14
+
+    Constructor takes:
+      arg1: integer 0-3 corresponding to suit
+      arg2: integer 2-14 corresponding to value
     """
 
     suit_names = ['C', 'D', 'H', 'S']
@@ -31,7 +40,7 @@ class Card(object):
         self.suit = suit
         self.rank = rank
 
-    def __str__(self):
+    def __repr__(self):
         """Returns a human-readable string representation."""
         return '%s%s' % (Card.rank_names[self.rank], Card.suit_names[self.suit])
 
@@ -64,7 +73,7 @@ class Hand(object):
         else:
             self.cards = initial
 
-    def __str__(self):
+    def __repr__(self):
         res = []
         for card in self.cards:
             res.append(str(card))
@@ -103,6 +112,47 @@ def full_hand():
 
     return fullhand
 
+def convertCard(lincard):
+    ''' Convert lin-style 2-char notation to Card()
+    '''
+    linsuit = lincard[0]
+    linval = lincard[1]
+    return Card(SUITMAP[linsuit], CARDMAP[linval])
+
+def trickWinner(cards, leader, trump=None):
+    ''' Returns the winner of a trick
+
+    input:
+        trick: length-4 dict (keys: dirs, values: Cards)
+        leader: str
+        trump: str
+
+    returns:
+        winner: str (direction)
+        top: Card (winning card in the trick)
+    '''
+    trumpsuit = SUITMAP[trump]
+
+    suitlist = ['E','S','W','N']
+    suitlist.remove(leader)
+
+    # default winner is leader's card
+    winner = leader
+    top = cards[leader]
+    ledsuit = top.suit
+   
+    # NEED TO CONVERT SUIT TO NUMERIC FOR COMPARISONS
+
+    for dir in suitlist:
+        if (cards[dir].suit == top.suit) & (cards[dir].rank > top.rank):
+            top = cards[dir]
+            winner = dir
+        elif (cards[dir].suit == trumpsuit) & (top.suit is not trumpsuit):
+            top = cards[dir]
+            winner = dir
+
+    return (winner, top) 
+
 class BridgeHand:
     '''
     players: dict (keys: dirs)
@@ -125,6 +175,23 @@ class BridgeHand:
         self.vuln = vuln
 
     # might want to define a method for checking equality here
+
+def rotateTo(dir, offset=0, list='ESWN'):
+    ''' Rotates a list (default 'ESWN') to start from a specified
+        direction (going clockwise)
+
+        args:
+            dir: str
+            offset: int (advance rotation by __)
+
+        example:
+            rotateTo('W', 1) rotates to the play order 'NESW'
+    '''
+
+    suits = ['E','S','W','N']
+    rotation = suits.index(dir)+offset
+
+    return list[rotation:] + list[:rotation]
 
 def get_players(lin):
     ''' Parses .lin files for the players
@@ -192,7 +259,7 @@ def get_initial_hands(lin):
 
     return(hands)
 
-def get_bids(lin):
+def process_bids(lin):
     ''' Parses .lin files for bid information 
 
     args:
@@ -214,24 +281,39 @@ def get_bids(lin):
     # check for passout
     if (len(bids) == 4) and (bids[0] == 'p'):
         return bids, None, 'PO'
-
-    # set the declarer: 0 = East (declarer)
-    # note: adjust by -5 because len(bids) > 0 
-    declarer =  PLAYERS[(len(bids)-5)%4]
     
-    # get the contract and return
+    # get the contract 
     doubles = []
     i = 1
     while (bids[-i] == 'd' or bids[-i] == 'p'):
         doubles.append(bids[-i])
         i += 1
+    contract = bids[-i]
 
-    raw = bids[-i]
-    if 'd' not in bids:
-        return bids, declarer, (raw, 0)
+    # set the declarer: 0 = East (declarer)
+    def get_snd(str):
+        if len(str) == 1: return None
+        else: return str[1]
+
+    csuit = contract[1]
+    bidsuits = list(map(get_snd, bids))
+
+    # extract bids only from winning team and reverse
+    bidsuits = bidsuits[bids.index(contract)::-2]
+
+    # check that earliest suit match is even or odd
+    #   even = declarer is player who set contract
+    #   odd = declarer is opposite of player who set contract
+    firstmatch = rindex(bidsuits, csuit)
+    if firstmatch % 2 == 0:
+        declarer = PLAYERS[(len(bids)-5)%4]
     else:
-        return bids, declarer, (raw, doubles.count('d'))
+        declarer = PLAYERS[(len(bids)-3)%4]
 
+    if 'd' not in bids:
+        return bids, declarer, (contract, 0)
+    else:
+        return bids, declarer, (contract, doubles.count('d'))
 
 #####################################    
 def parse_linfile(linfile):
@@ -242,22 +324,41 @@ def parse_linfile(linfile):
     
     players = get_players(lin)
     hands = get_initial_hands(lin)
-    bids, declarer, (contract, doubled) = get_bids(lin)
+    bids, declarer, (contract, doubled) = process_bids(lin)
     
     # need bids to process play
     play_match = re.search('pc\|(.+)\|pg\|\|', lin)
     play_str = play_match.group(1).split('|pg|')
+    
+    '''
+    A BUG:
 
+    1) Some boards' play ends in a '|pg||mc|xx|' sequence where
+        'mc' = tricks claimed and 'xx' is the number (integer) of
+        tricks claimed.
+    
+    DESPERATELY-NEEDED FIX:
+
+    The below code calculates the play wrong. It assumes the playing
+    order doesn't change through the game (i.e. all tricks start with
+    player on declarer's LHS).
+
+    In the linfile, each 4-card trick sequence starts with the person
+    who won the last trick, not a fixed direction.
+    '''
+    
     # split into cards
-    suitlist = ['E','S','W','N']
-    itersuit = deque('ESWN')
-    rotated = itersuit.rotate(-(suitlist.index(declarer)+1))
+    order = rotateTo(declarer, 1)
     play = []
+    
     for trick in play_str:
+        # strip leading '|pc|' in 2nd-onwards elements of play_str
+        trick = re.sub('^\|pc\|', '', trick)
+
         cards = trick.split('|pc|')
         play.append(dict())
-        for s in itersuit:
-            play[-1][s] = cards.pop(0)
+        for s in order:
+            play[-1][s] = convertCard(cards.pop(0))
 
     return BridgeHand(players, hands, bids, play, contract, declarer, doubled, None)
 
