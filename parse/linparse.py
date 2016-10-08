@@ -102,6 +102,29 @@ class Hand(object):
         """Sorts the cards in ascending order."""
         self.cards.sort()
 
+class BridgeHand:
+    '''
+    players: dict (keys: dirs)
+    hands: dict (keys: dirs) of Hand objects 
+    bids: list
+    play: list of dicts (keys: 'E', 'S', 'W', 'N', 'lead') 
+    contract: str
+    declarer: str (dir)
+    doubled: {0,1,2}
+    '''
+
+    def __init__(self, players, hands, bids, play, contract, declarer, doubled, vuln):
+        self.players = players
+        self.hands = hands
+        self.bids = bids
+        self.play = play
+        self.contract = contract
+        self.declarer = declarer
+        self.doubled = doubled
+        self.vuln = vuln
+
+    # might want to define a method for checking equality here
+
 def full_hand():
     ''' Return a full (52-card) Hand object
     '''
@@ -140,8 +163,6 @@ def trickWinner(cards, leader, trump=None):
     winner = leader
     top = cards[leader]
     ledsuit = top.suit
-   
-    # NEED TO CONVERT SUIT TO NUMERIC FOR COMPARISONS
 
     for dir in suitlist:
         if (cards[dir].suit == top.suit) & (cards[dir].rank > top.rank):
@@ -151,30 +172,8 @@ def trickWinner(cards, leader, trump=None):
             top = cards[dir]
             winner = dir
 
-    return (winner, top) 
+    return winner, top 
 
-class BridgeHand:
-    '''
-    players: dict (keys: dirs)
-    hands: dict (keys: dirs) of Hand objects 
-    bids: list
-    play: list of dicts (keys: dirs) 
-    contract: str
-    declarer: str (dir)
-    doubled: {0,1,2}
-    '''
-
-    def __init__(self, players, hands, bids, play, contract, declarer, doubled, vuln):
-        self.players = players
-        self.hands = hands
-        self.bids = bids
-        self.play = play
-        self.contract = contract
-        self.declarer = declarer
-        self.doubled = doubled
-        self.vuln = vuln
-
-    # might want to define a method for checking equality here
 
 def rotateTo(dir, offset=0, list='ESWN'):
     ''' Rotates a list (default 'ESWN') to start from a specified
@@ -336,15 +335,6 @@ def parse_linfile(linfile):
     1) Some boards' play ends in a '|pg||mc|xx|' sequence where
         'mc' = tricks claimed and 'xx' is the number (integer) of
         tricks claimed.
-    
-    DESPERATELY-NEEDED FIX:
-
-    The below code calculates the play wrong. It assumes the playing
-    order doesn't change through the game (i.e. all tricks start with
-    player on declarer's LHS).
-
-    In the linfile, each 4-card trick sequence starts with the person
-    who won the last trick, not a fixed direction.
     '''
     
     # split into cards
@@ -352,13 +342,24 @@ def parse_linfile(linfile):
     play = []
     
     for trick in play_str:
+
+        play.append(dict())
+        
+        # record who led this trick
+        play[-1]['lead'] = order[0]
+        
         # strip leading '|pc|' in 2nd-onwards elements of play_str
         trick = re.sub('^\|pc\|', '', trick)
 
         cards = trick.split('|pc|')
-        play.append(dict())
         for s in order:
             play[-1][s] = convertCard(cards.pop(0))
+
+        # update order based on who won last trick
+        winner, top = trickWinner(play[-1], order[0], contract[1])
+        order = rotateTo(winner)
+
+    # KEEP RUNNING COUNT OF TRICKS MADE AND CALCULATE RESULT
 
     return BridgeHand(players, hands, bids, play, contract, declarer, doubled, None)
 
