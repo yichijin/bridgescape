@@ -111,9 +111,10 @@ class BridgeHand:
     contract: str
     declarer: str (dir)
     doubled: {0,1,2}
+    made: int
     '''
 
-    def __init__(self, players, hands, bids, play, contract, declarer, doubled, vuln):
+    def __init__(self, players, hands, bids, play, contract, declarer, doubled, vuln, made):
         self.players = players
         self.hands = hands
         self.bids = bids
@@ -122,6 +123,7 @@ class BridgeHand:
         self.declarer = declarer
         self.doubled = doubled
         self.vuln = vuln
+        self.made = made
 
     # might want to define a method for checking equality here
 
@@ -339,8 +341,11 @@ def parse_linfile(linfile):
     
     # split into cards
     order = rotateTo(declarer, 1)
-    play = []
+    dummy = order[1]
     
+    play = []
+    made = 0
+
     for trick in play_str:
 
         play.append(dict())
@@ -359,9 +364,11 @@ def parse_linfile(linfile):
         winner, top = trickWinner(play[-1], order[0], contract[1])
         order = rotateTo(winner)
 
-    # KEEP RUNNING COUNT OF TRICKS MADE AND CALCULATE RESULT
+        # update running count of tricks won by declaring team
+        if (winner==declarer) or (winner==dummy):
+            made += 1
 
-    return BridgeHand(players, hands, bids, play, contract, declarer, doubled, None)
+    return BridgeHand(players, hands, bids, play, contract, declarer, doubled, None, made)
 
 
 
