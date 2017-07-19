@@ -156,7 +156,10 @@ def trickWinner(cards, leader, trump=None):
         winner: str (direction)
         top: Card (winning card in the trick)
     '''
-    trumpsuit = SUITMAP[trump]
+    if trump == 'N':
+        trumpsuit = None
+    else:
+        trumpsuit = SUITMAP[trump]
 
     suitlist = ['E','S','W','N']
     suitlist.remove(leader)
@@ -166,6 +169,8 @@ def trickWinner(cards, leader, trump=None):
     top = cards[leader]
     ledsuit = top.suit
 
+    
+    # if contract is NT, then trumpsuit == 'N' and the elif is skipped
     for dir in suitlist:
         if (cards[dir].suit == top.suit) & (cards[dir].rank > top.rank):
             top = cards[dir]
@@ -270,15 +275,25 @@ def process_bids(lin):
         x (list): bid sequence
         y (str): declarer
         z (tuple): str (contract), {0,1} (doubled or not)
+
+        or
+
+        None if no bids were found
     '''
 
     # returns list of bids, declarer and contract
     # in the ACBL boards the dealer is always East
 
-    # extract list of bids
+    # extract raw bid string 
     bids_match = re.search('mb\|(.+?)\|pg', lin)
+    
+    # check if bids exist at all
+    if bids_match == None:
+        return None
+
+    # extract the bid sequence
     bids = bids_match.group(1).split('|mb|')
-   
+  
     # check for passout
     if (len(bids) == 4) and (bids[0] == 'p'):
         return bids, None, 'PO'
@@ -325,8 +340,14 @@ def parse_linfile(linfile):
     
     players = get_players(lin)
     hands = get_initial_hands(lin)
-    bids, declarer, (contract, doubled) = process_bids(lin)
     
+    bids_triple = process_bids(lin)
+    if bids_triple == None:
+        return None
+    else:
+        bids, declarer, (contract, doubled) = bids_triple
+    
+
     # need bids to process play
     play_match = re.search('pc\|(.+)\|pg\|\|', lin)
     play_str = play_match.group(1).split('|pg|')

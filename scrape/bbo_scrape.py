@@ -5,10 +5,11 @@ import time
 import os
 import datetime as dt
 from bs4 import BeautifulSoup
+from random import randrange
 
 import config
 
-datadir = '/home/yichijin/Dropbox/Research/bridge/data'
+datadir = '/mnt/data/bridge'
 
 # load the last known timestamp scraped (all times UTC)
 with open('timestamp.dat','r') as f:
@@ -54,7 +55,7 @@ while True:
 
         # if we're up to date on tournament, rest; otherwise, keep scraping
         if (current < last):
-            time.sleep(720)
+            time.sleep(180)
             last = now
             break
         else:
@@ -106,6 +107,6 @@ while True:
                     print('    | ' + lin)
 
                     # sleep so we don't get throttled
-                    time.sleep(10)
+                    time.sleep(randrange(4,10))
 
 
