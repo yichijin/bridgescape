@@ -1,8 +1,10 @@
 #!/usr/bin/python3
 
 '''
-date: 10/07/2016
-author: Jimmy Jin
+linparse.py
+
+Last updated: 7/20/17
+Author: Jimmy Jin
 
 This script:
     1) Creates classes for neatly representing bridge hands, play, and bids
@@ -144,7 +146,7 @@ def convertCard(lincard):
     linval = lincard[1]
     return Card(SUITMAP[linsuit], CARDMAP[linval])
 
-def trickWinner(cards, leader, trump=None):
+def get_trick_winner(cards, leader, trump=None):
     ''' Returns the winner of a trick
 
     input:
@@ -182,7 +184,7 @@ def trickWinner(cards, leader, trump=None):
     return winner, top 
 
 
-def rotateTo(dir, offset=0, list='ESWN'):
+def rotate_to(dir, offset=0, list='ESWN'):
     ''' Rotates a list (default 'ESWN') to start from a specified
         direction (going clockwise)
 
@@ -191,7 +193,7 @@ def rotateTo(dir, offset=0, list='ESWN'):
             offset: int (advance rotation by __)
 
         example:
-            rotateTo('W', 1) rotates to the play order 'NESW'
+            rotate_to('W', 1) rotates to the play order 'NESW'
     '''
 
     suits = ['E','S','W','N']
@@ -298,11 +300,23 @@ def process_bids(lin):
     if (len(bids) == 4) and (bids[0] == 'p'):
         return bids, None, 'PO'
     
-    # get the contract 
+    # get the contract
+    '''
+    Do this by peeling backwards from the end of the bid
+    sequence: if 'd', 'r', 'p', or 'p!' are encountered, then
+    advance backwards by one index. When we stop encountering
+    those flags, then we have arrived at the final contract bid.
+
+    If in addition 'r' or 'd' are encountered, append to doubles
+    (list) and count the number of doubles at the end of this
+    function.
+    '''
+
     doubles = []
     i = 1
-    while (bids[-i] == 'd' or bids[-i] == 'p'):
-        doubles.append(bids[-i])
+    while (bids[-i] in 'drp') or (bids[-i] == 'p!'):
+        if bids[-i] in 'dr':
+            doubles.append(bids[-i])
         i += 1
     contract = bids[-i]
 
@@ -320,11 +334,12 @@ def process_bids(lin):
     # check that earliest suit match is even or odd
     #   even = declarer is player who set contract
     #   odd = declarer is opposite of player who set contract
+    
     firstmatch = rindex(bidsuits, csuit)
     if firstmatch % 2 == 0:
-        declarer = PLAYERS[(len(bids)-5)%4]
+        declarer = PLAYERS[(len(bids)-2)%4]
     else:
-        declarer = PLAYERS[(len(bids)-3)%4]
+        declarer = PLAYERS[(len(bids))%4]
 
     if 'd' not in bids:
         return bids, declarer, (contract, 0)
@@ -358,10 +373,14 @@ def parse_linfile(linfile):
     1) Some boards' play ends in a '|pg||mc|xx|' sequence where
         'mc' = tricks claimed and 'xx' is the number (integer) of
         tricks claimed.
+
+    2) Some boards' play ends with less than 13 tricks played but no
+        'claimed' flag as in 1). Add an 'incomplete' flag for these
+        boards.
     '''
     
     # split into cards
-    order = rotateTo(declarer, 1)
+    order = rotate_to(declarer, 1)
     dummy = order[1]
     
     play = []
@@ -382,8 +401,8 @@ def parse_linfile(linfile):
             play[-1][s] = convertCard(cards.pop(0))
 
         # update order based on who won last trick
-        winner, top = trickWinner(play[-1], order[0], contract[1])
-        order = rotateTo(winner)
+        winner, top = get_trick_winner(play[-1], order[0], contract[1])
+        order = rotate_to(winner)
 
         # update running count of tricks won by declaring team
         if (winner==declarer) or (winner==dummy):

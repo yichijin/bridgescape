@@ -1,3 +1,18 @@
+#!/usr/bin/python3
+
+'''
+bbo_scrape.py
+
+Last updated: 07/20/17
+Author: Jimmy Jin
+
+This file used for scraping the BridgeBaseOnline hand records.
+
+Currently only scrapes tha ACBL Individual/Pairs speedball
+tournaments. Occurs hourly. This script scrapes the raw .lin
+files which are parsed using linparse.py.
+'''
+
 import requests
 import re
 import json
@@ -80,7 +95,8 @@ while True:
 
                 # save the tournament ID
                 traveller_id = traveller_link.rpartition('-')[2]
-                print('  Getting boards from traveller #' + traveller_id + '...')
+                print('  Getting boards from traveller #' + traveller_id + '...\n')
+                print('  Current time: {}'.format(str(dt.datetime.now())))
 
                 # soupify the traveller page
                 traveller = s.get('http://www.bridgebase.com' \
