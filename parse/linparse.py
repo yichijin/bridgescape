@@ -116,7 +116,7 @@ class BridgeHand:
     made: int
     '''
 
-    def __init__(self, players, hands, bids, play, contract, declarer, doubled, vuln, made):
+    def __init__(self, players, hands, bids, play, contract, declarer, doubled, vuln, made, claimed):
         self.players = players
         self.hands = hands
         self.bids = bids
@@ -126,12 +126,15 @@ class BridgeHand:
         self.doubled = doubled
         self.vuln = vuln
         self.made = made
+        self.claimed = claimed
 
     # might want to define a method for checking equality here
 
 def full_hand():
-    ''' Return a full (52-card) Hand object
     '''
+    Return a full (52-card) Hand object
+    '''
+    
     fullhand = Hand()
     for suit in range(4):
         for rank in range(2,15):
@@ -139,15 +142,18 @@ def full_hand():
 
     return fullhand
 
-def convertCard(lincard):
-    ''' Convert lin-style 2-char notation to Card()
+def convert_card(lincard):
     '''
+    Convert lin-style 2-char notation to Card()
+    '''
+    
     linsuit = lincard[0]
     linval = lincard[1]
     return Card(SUITMAP[linsuit], CARDMAP[linval])
 
 def get_trick_winner(cards, leader, trump=None):
-    ''' Returns the winner of a trick
+    '''
+    Returns the winner of a trick
 
     input:
         trick: length-4 dict (keys: dirs, values: Cards)
@@ -158,6 +164,7 @@ def get_trick_winner(cards, leader, trump=None):
         winner: str (direction)
         top: Card (winning card in the trick)
     '''
+    
     if trump == 'N':
         trumpsuit = None
     else:
@@ -185,8 +192,9 @@ def get_trick_winner(cards, leader, trump=None):
 
 
 def rotate_to(dir, offset=0, list='ESWN'):
-    ''' Rotates a list (default 'ESWN') to start from a specified
-        direction (going clockwise)
+    '''
+    Rotates a list (default 'ESWN') to start from a specified
+    direction (going clockwise)
 
         args:
             dir: str
@@ -202,16 +210,22 @@ def rotate_to(dir, offset=0, list='ESWN'):
     return list[rotation:] + list[:rotation]
 
 def get_players(lin):
-    ''' Parses .lin files for the players
+    '''
+    Parses .lin files for the players. Returns None if 
+    no players found.
 
     args:
         lin: a .lin-formatted string
 
     returns:
         players: dict of players (keyed by direction)
+
     '''
 
     p_match = re.search('pn\|([^\|]+)', lin)
+    if not(p_match):
+        return None
+    
     p_str = p_match.group(1).split(',')
 
     # player order is S,W,N,E
@@ -219,7 +233,9 @@ def get_players(lin):
     return(players)
 
 def get_initial_hands(lin):
-    ''' Parses .lin files for initial hands
+    '''
+    Parses .lin files for initial hands. Returns None if
+    no hands found.
 
     args:
         lin: a .lin-formatted string
@@ -227,6 +243,7 @@ def get_initial_hands(lin):
     returns:
         hands: dict of Hand objects (keyed by direction)
     '''
+    
     def convert_cards(cstring):
         ''' Breaks up the .lin-format card blob by suit
 
@@ -251,6 +268,9 @@ def get_initial_hands(lin):
     hands = {}
 
     h_match = re.search('md\|([^\|]+)', lin)
+    if not(h_match):
+        return None
+
     h_str = h_match.group(1).split(',')
     h_str[0] = h_str[0][1:]
 
@@ -268,7 +288,8 @@ def get_initial_hands(lin):
     return(hands)
 
 def process_bids(lin):
-    ''' Parses .lin files for bid information 
+    ''' Parses .lin files for bid information. Returns None
+    if no bid information found.
 
     args:
         lin: a .lin-formatted string
@@ -277,10 +298,6 @@ def process_bids(lin):
         x (list): bid sequence
         y (str): declarer
         z (tuple): str (contract), {0,1} (doubled or not)
-
-        or
-
-        None if no bids were found
     '''
 
     # returns list of bids, declarer and contract
@@ -288,14 +305,24 @@ def process_bids(lin):
 
     # extract raw bid string 
     bids_match = re.search('mb\|(.+?)\|pg', lin)
-    
-    # check if bids exist at all
-    if bids_match == None:
+    if not(bids_match):
         return None
 
     # extract the bid sequence
     bids = bids_match.group(1).split('|mb|')
-  
+
+    '''
+    Check for 'an' flags:
+
+    Apparently, occasionally in the bid string there will be
+    a special 'an' flag which signals that the next '|'-delineated
+    field contains a comment, i.e. not a proper bid.
+
+    Check for these and delete them.
+    '''
+    bids = [re.sub(r'\|?an\|(.*)?$', '', x) for x in bids]
+    
+
     # check for passout
     if (len(bids) == 4) and (bids[0] == 'p'):
         return bids, None, 'PO'
@@ -341,43 +368,34 @@ def process_bids(lin):
     else:
         declarer = PLAYERS[(len(bids))%4]
 
-    if 'd' not in bids:
-        return bids, declarer, (contract, 0)
-    else:
-        return bids, declarer, (contract, doubles.count('d'))
+    return bids, declarer, (contract, len(doubles))
 
-#####################################    
-def parse_linfile(linfile):
-#####################################    
-    
-    with open(linfile, 'r') as f:
-        lin=f.read()
-    
-    players = get_players(lin)
-    hands = get_initial_hands(lin)
-    
-    bids_triple = process_bids(lin)
-    if bids_triple == None:
-        return None
-    else:
-        bids, declarer, (contract, doubled) = bids_triple
-    
+def process_play(lin, declarer, contract):
+    ''' Parses .lin files for play information 
 
-    # need bids to process play
-    play_match = re.search('pc\|(.+)\|pg\|\|', lin)
+    depends:
+        requires declarer and contract information output
+        from process_bids()
+
+    args:
+        lin: a .lin-formatted string
+
+    returns: 
+        play: list of dicts (see definition of BridgeHand)
+        made: int
+    '''
+
+    # process the play portion of the linfile 
+    '''
+    Explanation of this regex:
+
+    The play sequence begins with the 'pc' flag and ends on either
+        1) '|pg||' if all tricks are played
+        2) '|mc|' if tricks were claimed
+    '''
+    
+    play_match = re.search(r'pc\|(.+)(\|pg\|\|)|(\|mc\|)', lin)
     play_str = play_match.group(1).split('|pg|')
-    
-    '''
-    A BUG:
-
-    1) Some boards' play ends in a '|pg||mc|xx|' sequence where
-        'mc' = tricks claimed and 'xx' is the number (integer) of
-        tricks claimed.
-
-    2) Some boards' play ends with less than 13 tricks played but no
-        'claimed' flag as in 1). Add an 'incomplete' flag for these
-        boards.
-    '''
     
     # split into cards
     order = rotate_to(declarer, 1)
@@ -396,9 +414,22 @@ def parse_linfile(linfile):
         # strip leading '|pc|' in 2nd-onwards elements of play_str
         trick = re.sub('^\|pc\|', '', trick)
 
+        # split the trick string into individual cards played
         cards = trick.split('|pc|')
+
+        '''
+        if tricks were claimed, then the last trick in the string
+        might have less than four cards played.
+
+        then only convert the remaining cards and exit the loop.
+        '''
+        if len(cards)<4:
+            for s in order[:len(cards)]:
+                play[-1][s] = convert_card(cards.pop(0))
+            break 
+            
         for s in order:
-            play[-1][s] = convertCard(cards.pop(0))
+            play[-1][s] = convert_card(cards.pop(0))
 
         # update order based on who won last trick
         winner, top = get_trick_winner(play[-1], order[0], contract[1])
@@ -408,7 +439,36 @@ def parse_linfile(linfile):
         if (winner==declarer) or (winner==dummy):
             made += 1
 
-    return BridgeHand(players, hands, bids, play, contract, declarer, doubled, None, made)
+    return play, made
+
+#####################################    
+def parse_linfile(linfile):
+#####################################    
+    
+    with open(linfile, 'r') as f:
+        lin=f.read()
+    
+    players = get_players(lin)
+    hands = get_initial_hands(lin)
+    bids_triple = process_bids(lin)
+    
+    if not(players and hands and bids_triple):
+        return None
+    else:
+        bids, declarer, (contract, doubled) = bids_triple
+
+    # process play using declarer/contract from process_bids()
+    play, made = process_play(lin, declarer, contract)
+    
+    # check if play ended on claimed tricks
+    claim_str = re.search(r'\|mc\|([0-9]+)\|', lin)
+    if claim_str:
+        claimed = True
+        made = claim_str.group(1) 
+    else:
+        claimed = False
+
+    return BridgeHand(players, hands, bids, play, contract, declarer, doubled, None, made, claimed)
 
 
 
