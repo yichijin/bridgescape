@@ -2,6 +2,7 @@
 config.py
 scrape/reset_timestamp.py
 scrape/timestamp.dat
+temp/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

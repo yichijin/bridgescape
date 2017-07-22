@@ -70,7 +70,15 @@ while True:
 
         # if we're up to date on tournament, rest; otherwise, keep scraping
         if (current < last):
-            time.sleep(180)
+            
+            print('Finished scraping tournaments up til {}, resetting last-scraped to {}'.format(last, now))
+            
+            '''
+            Note: this time must be set to at least 1 hour to allow new
+            tournaments to appear--otherwise the script gets stuck.
+            '''
+
+            time.sleep(3601)
             last = now
             break
         else:

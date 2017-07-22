@@ -20,6 +20,16 @@ CARDMAP = {'2':2, '3':3, '4':4, '5':5, '6':6, '7':7, '8':8, '9':9, 'T':10, 'J':1
 
 # for readability...
 def rindex(list, elt):
+    '''Return the reverse index of elt in list
+
+    inputs:
+        list: list
+        elt: an element inside list
+
+    outputs:
+        int
+    '''
+    
     return len(list) - list[::-1].index(elt) -1
    
 
@@ -29,6 +39,8 @@ class Card(object):
     Attributes:
       suit: integer 0-3
       rank: integer 2-14
+      suitname: str in {'C','D','H','S'}
+      rankname: str in {'2','3','4','5','6','7','8','9','10','J','Q','K','A'}
 
     Constructor takes:
       arg1: integer 0-3 corresponding to suit
@@ -41,6 +53,8 @@ class Card(object):
     def __init__(self, suit=0, rank=2):
         self.suit = suit
         self.rank = rank
+        self.suitname = self.suit_names[suit]
+        self.rankname = self.rank_names[rank]
 
     def __repr__(self):
         """Returns a human-readable string representation."""
@@ -60,7 +74,7 @@ class Card(object):
         return cmp(t1, t2)
 
 class Hand(object):
-    """Represents a deck of cards.
+    """Represents a hand/deck of cards.
 
     Args:
         initial: list of Card objects
@@ -80,6 +94,10 @@ class Hand(object):
         for card in self.cards:
             res.append(str(card))
         return ','.join(res)
+
+    def __getitem__(self, item):
+        '''Implementing getitem so that we get iteration and slicing'''
+        return self.cards[item]
 
     def has(self, other):
         '''Checks whether a Card (other) is in hand'''
@@ -267,7 +285,7 @@ def get_initial_hands(lin):
     # get the hands of S, W, N
     hands = {}
 
-    h_match = re.search('md\|([^\|]+)', lin)
+    h_match = re.search('\|md\|([^\|]+)', lin)
     if not(h_match):
         return None
 
