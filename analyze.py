@@ -55,11 +55,11 @@ def hcp(hand, shortness=False):
         sp_list = [3,2,1]
         
         # pass list of card suits to collections.Counter
-        vals = set(map(lambda x: x.suit, hand))
+        vals = list(map(lambda x: x.suit, hand))
         counts = Counter(vals)
 
         void = (4-len(counts))*3
-        sp = sum([sp_list[v] for v in counts.values()])
+        sps = sum([sp_list[v] for v in counts.values() if v<3])
 
     # get normal hcps
     hcps = 0

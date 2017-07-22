@@ -13,6 +13,7 @@ This script:
 
 import re
 from collections import deque
+from functools import cmp_to_key
 
 PLAYERS = {0:'E', 1:'S', 2:'W', 3:'N'}
 SUITMAP = {'C':0, 'D':1, 'H':2, 'S':3}
@@ -48,30 +49,52 @@ class Card(object):
     """
 
     suit_names = ['C', 'D', 'H', 'S']
-    rank_names = [None, None, '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A']
+    rank_names = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A']
 
     def __init__(self, suit=0, rank=2):
         self.suit = suit
         self.rank = rank
         self.suitname = self.suit_names[suit]
-        self.rankname = self.rank_names[rank]
+        self.rankname = self.rank_names[rank-2]
 
     def __repr__(self):
         """Returns a human-readable string representation."""
-        return '%s%s' % (Card.rank_names[self.rank], Card.suit_names[self.suit])
+        return '%s%s' % (Card.rank_names[self.rank-2], Card.suit_names[self.suit])
 
+    '''
+    NOTE:
+    
+    default comparison is deliberately not implemented so as
+    not to confuse users who may implicitly assume a certain 
+    suit rank (which is ambiguous outside of bridge).
+
+    Comparison with flexible suit order is implemented below
+    in the compare() method.
+    '''
+    
     def __eq__(self, other):
         return (self.suit == other.suit and self.rank == other.rank)
 
-    def __cmp__(self, other):
-        """Compares this card to other, first by suit, then rank.
+    def compare(self, other, sorder=(0,1,2,3)):
+        '''
+        Python 2-style cmp() operation on Card objects. Note:
+        suit order defaults to standard bridge order: Clubs <
+        Diamonds < Hearts < Spades.
 
-        Returns a positive number if this > other; negative if other > this;
-        and 0 if they are equivalent.
-        """
-        t1 = self.suit, self.rank
-        t2 = other.suit, other.rank
-        return cmp(t1, t2)
+        suitorder: tuple of suits (numerical) from low-to-high
+        '''
+
+        self_srank = sorder.index(self.suit)
+        other_srank = sorder.index(other.suit)
+
+        if self==other:
+            return 0
+        elif (self_srank < other_srank):
+            return -1
+        elif (self_srank == other_srank) and (self.rank < other.rank):
+            return -1
+        else:
+            return 1
 
 class Hand(object):
     """Represents a hand/deck of cards.
@@ -99,6 +122,9 @@ class Hand(object):
         '''Implementing getitem so that we get iteration and slicing'''
         return self.cards[item]
 
+    def __len__(self):
+        return len(self.cards)
+
     def has(self, other):
         '''Checks whether a Card (other) is in hand'''
         return (other in self.cards)
@@ -109,18 +135,26 @@ class Hand(object):
 
     def remove_card(self, card):
         """Removes a card from the deck."""
-        self.cards.remove(card)
-
+        self.cards.sort()
+    
     def pop_card(self, i=-1):
         """Removes and returns a card from the deck.
 
         i: index of the card to pop; by default, pops the last card.
         """
         return self.cards.pop(i)
+    
+    def sort(self, sorder=(0,1,2,3)):
+        """Since comparison is not implemented for Card we
+        have to implement card order here. Note that suitorder
+        must be passed to the compare method of Card.
 
-    def sort(self):
-        """Sorts the cards in ascending order."""
-        self.cards.sort()
+        suitorder: tuple of suits (numerical) from low-to-high
+        """
+
+        keyfunc = cmp_to_key(lambda x,y: x.compare(y, sorder))
+
+        return Hand(initial=sorted(self, key=keyfunc))
 
 class BridgeHand:
     '''
@@ -199,7 +233,7 @@ def get_trick_winner(cards, leader, trump=None):
     
     # if contract is NT, then trumpsuit == 'N' and the elif is skipped
     for dir in suitlist:
-        if (cards[dir].suit == top.suit) & (cards[dir].rank > top.rank):
+        if (cards[dir].suit == top.suit) & (cards[dir] > top):
             top = cards[dir]
             winner = dir
         elif (cards[dir].suit == trumpsuit) & (top.suit is not trumpsuit):
