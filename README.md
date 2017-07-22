@@ -4,23 +4,17 @@ This is a suite of tools to parse, analyze, and scrape bridge hand data from the
 
 Complete data on bridge hands and tournaments is publicly available on BBO, but to date has been provided in a cryptic format (.lin files). This repository builds on the work of http://github.com/OneTrickPony82/Bridge-Tools to provide the tools to convert these files into human-readable, Python classes.
 
-These tools are currently still under development. They consist of four parts:
+These tools are currently still under development. The main two modules are:
 
-1) module bridgescape.linparse: 
+1) module **bridgescape.linparse**: class definitions for Card, Hand, and BridgeHand and tools for parsing .lin files into BridgeHand objects
 
-tools for parsing and analyzing .lin files
+2) module **bridgescape.analyze**: tools for analyzing BridgeHands once they have been parsed from the .lin files
 
-2) module bridgescape.analyze:
+In addition, I have also provided supplementary files under two subdirectories:
 
-tools for analyzing BridgeHands once they have been parsed from the .lin files
+3) **data/**: a sample of the scraped data from a single pairs tournament
 
-3) directory data/:
-
-a sample of the scraped data from a single pairs tournament
-
-4) directory analyze/:
-
-tools for scraping .lin files directly from BBO
+4) **analyze/**: tools for scraping .lin files directly from BBO
 
 All folders will be updated as I get more time to work on the project. The current data set is comprised of ~650,000 unique boards which consist of roughly ~30,000 unique deals, totaling about 3GB.
 
@@ -28,16 +22,16 @@ All folders will be updated as I get more time to work on the project. The curre
 
 The heart of these tools is the BridgeHand class for representing a complete bridge hand, bids, and plays. The BridgeHand class is comprised of the following attributes:
 
-1) .players: a dict of BBO userids, keyed by position ('E', 'S', 'W', 'N')
-2) .hands: a dict of Hand objects comprised of Card objects, keyed by position 
-3) .bids: a list of str representing the bid sequence
-4) .play: a list of dicts, each of which represents a single trick. The trick dicts are keyed by position with Card values, with one extra entry keyed by 'lead' whose value is a position.
-5) .contract: string indicating the winning contract
-6) .declarer: string indicating the position of the declarer
-7) .doubled: int in {0,1,2} indicating whether the contract was undoubled, doubled, or redoubled
-8) .vuln: [not yet implemented]
-9) .made: the number of tricks made by the declaring team
-10) .claimed: whether play was ended on one side claiming tricks
+1) **.players**: a dict of BBO userids, keyed by position ('E', 'S', 'W', 'N')
+2) **.hands**: a dict of Hand objects comprised of Card objects, keyed by position 
+3) **.bids**: a list of str representing the bid sequence
+4) **.play**: a list of dicts, each of which represents a single trick. The trick dicts are keyed by position with Card values, with one extra entry keyed by 'lead' whose value is a position.
+5) **.contract**: string indicating the winning contract
+6) **.declarer**: string indicating the position of the declarer
+7) **.doubled**: int in {0,1,2} indicating whether the contract was undoubled, doubled, or redoubled
+8) **.vuln**: [not yet implemented]
+9) **.made**: the number of tricks made by the declaring team
+10) **.claimed**: whether play was ended on one side claiming tricks
 
 The Card and Hand objects have been equipped with simple utility methods to facilitate later analysis. These and other utility routines will be documented as time permits.
 
