@@ -21,7 +21,7 @@ CARDMAP = {'2':2, '3':3, '4':4, '5':5, '6':6, '7':7, '8':8, '9':9, 'T':10, 'J':1
 
 # for readability...
 def rindex(list, elt):
-    '''Return the reverse index of elt in list
+    '''Get the index of the last position matching elt in list
 
     inputs:
         list: list
@@ -339,10 +339,10 @@ def get_initial_hands(lin):
 
         hand = Hand()
 
-        card_match = re.search('S([^HDC]*)H([^DC]*)D([^C]*)C(.*)', cstring)
+        card_match = re.search('S([^HDC]*)?H([^DC]*)?D([^C]*)?C(.*)?', cstring)
         for s in range(4):
             for v in card_match.group(s+1):
-                hand.add_card(Card(suit=s, rank=CARDMAP[v]))
+                hand.add_card(Card(suit=(3-s), rank=CARDMAP[v]))
 
         return hand 
 
@@ -445,25 +445,27 @@ def get_bids(lin, dealer):
     of each bid.
     '''
     
+    csuit = contract[1]
+    cindex = bids.index(contract)
+    
     def get_snd(str):
         if len(str) == 1: return None
         else: return str[1]
-
-    csuit = contract[1]
     bidsuits = list(map(get_snd, bids))
 
-    # extract bids only from winning team and reverse
-    bidsuits = bidsuits[bids.index(contract)::-2]
-
-    # check that earliest suit match is even or odd
-    #   even = declarer is player who set contract
-    #   odd = declarer is opposite of player who set contract
+    '''
+    We need to count the number of bids beween
+        1) the contract-setting bid
+        2) the first bid (on the winning team) of the contract suit
     
-    firstmatch = rindex(bidsuits, csuit)
+    And check if it's a multiple of 2 or 4.
+    '''
+    firstmatch = rindex(bidsuits[cindex::-2], csuit)
+    
     if firstmatch % 2 == 0:
-        declarer = BID_PLAYERS[(len(bids))%4]
+        declarer = BID_PLAYERS[cindex % 4]
     else:
-        declarer = BID_PLAYERS[(len(bids)-2)%4]
+        declarer = BID_PLAYERS[(cindex-2) % 4]
 
     return bids, declarer, (contract, len(doubles))
 
