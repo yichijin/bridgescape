@@ -15,7 +15,6 @@ from collections import Counter
 
 SUITMAP = {'C':0, 'D':1, 'H':2, 'S':3}
 
-
 def detect_incomplete(b):
     '''
     A non-trivial proportion of the .lin files are incomplete--
@@ -34,6 +33,22 @@ def detect_incomplete(b):
 
     
     return (b is None) or (len(b.play)<13 and b.claimed==False)
+
+def partner(pos):
+    '''
+    Helper function to return the position of the partner of 'pos'
+
+    input:
+      pos: str (position)
+
+    return:
+      str
+    '''
+    dirs = ['E','S','W','N']
+    pos_index = dirs.index(pos)
+
+    return dirs[(pos_index+2)%4]
+  
 
 def hcp(hand, shortness=False):
     '''

@@ -23,15 +23,16 @@ All folders will be updated as I get more time to work on the project. The curre
 The heart of these tools is the BridgeHand class for representing a complete bridge hand, bids, and plays. The BridgeHand class is comprised of the following attributes:
 
 1) **.players**: a dict of BBO userids, keyed by position ('E', 'S', 'W', 'N')
-2) **.hands**: a dict of Hand objects comprised of Card objects, keyed by position 
-3) **.bids**: a list of str representing the bid sequence
-4) **.play**: a list of dicts, each of which represents a single trick. The trick dicts are keyed by position with Card values, with one extra entry keyed by 'lead' whose value is a position.
-5) **.contract**: string indicating the winning contract
-6) **.declarer**: string indicating the position of the declarer
-7) **.doubled**: int in {0,1,2} indicating whether the contract was undoubled, doubled, or redoubled
-8) **.vuln**: [not yet implemented]
-9) **.made**: the number of tricks made by the declaring team
-10) **.claimed**: whether play was ended on one side claiming tricks
+2) **.dealer**: string indicating position of the dealer
+3) **.hands**: a dict of Hand objects comprised of Card objects, keyed by position 
+4) **.bids**: a list of str representing the bid sequence
+5) **.play**: a list of dicts, each of which represents a single trick. The trick dicts are keyed by position with Card values, with one extra entry keyed by 'lead' whose value is a position.
+6) **.contract**: string indicating the winning contract
+7) **.declarer**: string indicating the position of the declarer
+8) **.doubled**: int in {0,1,2} indicating whether the contract was undoubled, doubled, or redoubled
+9) **.vuln**: str either 'NS', 'EW', 'both', or 'none'
+10) **.made**: the number of tricks made by the declaring team
+11) **.claimed**: whether play was ended on one side claiming tricks
 
 The Card and Hand objects have been equipped with simple utility methods to facilitate later analysis. These and other utility routines will be documented as time permits.
 

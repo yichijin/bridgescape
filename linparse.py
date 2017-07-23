@@ -135,7 +135,7 @@ class Hand(object):
 
     def remove_card(self, card):
         """Removes a card from the deck."""
-        self.cards.sort()
+        self.cards.remove(card)
     
     def pop_card(self, i=-1):
         """Removes and returns a card from the deck.
@@ -158,18 +158,22 @@ class Hand(object):
 
 class BridgeHand:
     '''
-    players: dict (keys: dirs)
-    hands: dict (keys: dirs) of Hand objects 
+    players: dict (keys: positions)
+    dealer: str (position)    
+    hands: dict (keys: positions) of Hand objects 
     bids: list
     play: list of dicts (keys: 'E', 'S', 'W', 'N', 'lead') 
     contract: str
-    declarer: str (dir)
+    declarer: str (postion)
     doubled: {0,1,2}
+    vuln: str of 'NS','EW','none', or 'both'
     made: int
+    claimed: bool
     '''
 
-    def __init__(self, players, hands, bids, play, contract, declarer, doubled, vuln, made, claimed):
+    def __init__(self, players, dealer, hands, bids, play, contract, declarer, doubled, vuln, made, claimed):
         self.players = players
+        self.dealer = dealer
         self.hands = hands
         self.bids = bids
         self.play = play
@@ -233,7 +237,7 @@ def get_trick_winner(cards, leader, trump=None):
     
     # if contract is NT, then trumpsuit == 'N' and the elif is skipped
     for dir in suitlist:
-        if (cards[dir].suit == top.suit) & (cards[dir] > top):
+        if (cards[dir].suit == top.suit) & (cards[dir].rank > top.rank):
             top = cards[dir]
             winner = dir
         elif (cards[dir].suit == trumpsuit) & (top.suit is not trumpsuit):
@@ -280,9 +284,36 @@ def get_players(lin):
     
     p_str = p_match.group(1).split(',')
 
-    # player order is S,W,N,E
+    # player order is always S,W,N,E
     players = {'S':p_str[0], 'W':p_str[1], 'N':p_str[2], 'E':p_str[3]}
     return(players)
+    
+def get_dealer(lin):
+    '''
+    Recover the position of the dealer: in the linfile, this is 
+    the first integer after the 'md|' flag which comes 
+    immediately after the list of players.
+
+    Since the player order is always SWNE (see above)
+
+    1 = first player in the list, i.e. 'S'
+    2 = second player in the list, i.e. 'W'
+    3 = third, i.e. 'N'
+    4 = fourth, i.e. 'E'
+
+    input:
+        lin: a .lin-formatted string
+
+    returns:
+        str (position)
+    '''
+
+    match = re.search(r'md\|([1-4])', lin)
+    dealer_no = int(match.group(1))
+
+    # have to %4 since BBO indexes 1-4 while we use 0-3
+    return PLAYERS[dealer_no%4]
+
 
 def get_initial_hands(lin):
     '''
@@ -324,6 +355,8 @@ def get_initial_hands(lin):
         return None
 
     h_str = h_match.group(1).split(',')
+
+    # strip the dealer flag from the first blob
     h_str[0] = h_str[0][1:]
 
     hands['S'] = convert_cards(h_str[0])
@@ -339,7 +372,7 @@ def get_initial_hands(lin):
 
     return(hands)
 
-def process_bids(lin):
+def get_bids(lin, dealer):
     ''' Parses .lin files for bid information. Returns None
     if no bid information found.
 
@@ -351,12 +384,16 @@ def process_bids(lin):
         y (str): declarer
         z (tuple): str (contract), {0,1} (doubled or not)
     '''
-
-    # returns list of bids, declarer and contract
-    # in the ACBL boards the dealer is always East
+    
+    '''
+    First, set the dealer. When we calculate who the declarer is
+    we will need the dealer to be in the first position of
+    the direction list.
+    '''
+    BID_PLAYERS = rotate_to(dealer)
 
     # extract raw bid string 
-    bids_match = re.search('mb\|(.+?)\|pg', lin)
+    bids_match = re.search(r'mb\|(.+?)\|pg', lin)
     if not(bids_match):
         return None
 
@@ -399,7 +436,15 @@ def process_bids(lin):
         i += 1
     contract = bids[-i]
 
-    # set the declarer: 0 = East (declarer)
+    '''
+    This next section extracts the declarer, which is the
+    person on the winning team who first bid the suit of 
+    the winning contract.
+    
+    get_snd() is a helper function to get only the SUIT
+    of each bid.
+    '''
+    
     def get_snd(str):
         if len(str) == 1: return None
         else: return str[1]
@@ -416,18 +461,41 @@ def process_bids(lin):
     
     firstmatch = rindex(bidsuits, csuit)
     if firstmatch % 2 == 0:
-        declarer = PLAYERS[(len(bids)-2)%4]
+        declarer = BID_PLAYERS[(len(bids))%4]
     else:
-        declarer = PLAYERS[(len(bids))%4]
+        declarer = BID_PLAYERS[(len(bids)-2)%4]
 
     return bids, declarer, (contract, len(doubles))
 
-def process_play(lin, declarer, contract):
+def get_vulnerability(lin):
+    '''
+    Parses .lin files for vulnerability.
+
+    args:
+        lin: a .lin-formatted string
+
+    returns:
+        str of 'NS','EW','none', or 'both'
+    '''
+
+    match = re.search(r'sv\|(.)\|', lin)
+    vuln_str = match.group(1) 
+
+    if vuln_str in 'NnSs':
+        return 'NS'
+    elif vuln_str in 'EeWw':
+        return 'WE'
+    elif vuln_str in 'oO0':
+        return 'none'
+    elif vuln_str in 'Bb':
+        return 'both'
+
+def get_play(lin, declarer, contract):
     ''' Parses .lin files for play information 
 
     depends:
         requires declarer and contract information output
-        from process_bids()
+        from get_bids()
 
     args:
         lin: a .lin-formatted string
@@ -501,16 +569,19 @@ def parse_linfile(linfile):
         lin=f.read()
     
     players = get_players(lin)
+    dealer = get_dealer(lin)
     hands = get_initial_hands(lin)
-    bids_triple = process_bids(lin)
+    bids_triple = get_bids(lin, dealer)
     
     if not(players and hands and bids_triple):
         return None
     else:
         bids, declarer, (contract, doubled) = bids_triple
 
-    # process play using declarer/contract from process_bids()
-    play, made = process_play(lin, declarer, contract)
+    vuln = get_vulnerability(lin)
+
+    # process play using declarer/contract from get_bids()
+    play, made = get_play(lin, declarer, contract)
     
     # check if play ended on claimed tricks
     claim_str = re.search(r'\|mc\|([0-9]+)\|', lin)
@@ -520,7 +591,7 @@ def parse_linfile(linfile):
     else:
         claimed = False
 
-    return BridgeHand(players, hands, bids, play, contract, declarer, doubled, None, made, claimed)
+    return BridgeHand(players, dealer, hands, bids, play, contract, declarer, doubled, vuln, made, claimed)
 
 
 
