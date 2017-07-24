@@ -46,7 +46,9 @@ The data is publicly available records from bridge games played online on bridge
 
 BridgeBase keeps records of their games in a propriety .lin format for which public specifications does not exist. However, bridgebase.com also allows users to view previous bridge hands, bids, and plays through an applet as well, so the format can be reverse-engineered.
 
-[insert linfile example here]
+An example .lin file:
+
+```pn|queen3233,buchananj,midmow,gbd5981|st||md|3S345H567QD37TC456,S67H39TD289JC2TQA,S2TJAHJAD46QAC3JK,|rh||ah|Board 1|sv|o|mb|1D|mb|p|mb|p|mb|p|pg||pc|SK|pc|S3|pc|S6|pc|SA|pg||pc|DA|pc|D5|pc|D3|pc|D2|pg||pc|ST|pc|SQ|pc|S4|pc|S7|pg||pc|S8|pc|S5|pc|D8|pc|SJ|pg||pc|HT|pc|HA|pc|H2|pc|H5|pg||pc|HJ|pc|HK|pc|H6|pc|H3|pg||pc|C7|pc|C4|pc|CA|pc|C3|pg||pc|C2|pc|CK|pc|C8|pc|C5|pg||pc|CJ|pc|C9|pc|C6|pc|CQ|pg||pc|H9|pc|S2|pc|H4|pc|HQ|pg||pc|H7|pc|D9|pc|DQ|pc|H8|pg||pc|D4|pc|DK|pc|D7|pc|DJ|pg||pc|S9|pc|DT|pc|CT|pc|D6|pg||```
 
 BridgeBase runs a variety of tournaments for users to play in, including ones offering robot (AI) opponents. Our data are comprised of only games from the ACBL Speedball hourly tournaments (individual and pairs).
 

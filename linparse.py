@@ -401,15 +401,15 @@ def get_bids(lin, dealer):
     bids = bids_match.group(1).split('|mb|')
 
     '''
-    Check for 'an' flags:
-
-    Apparently, occasionally in the bid string there will be
-    a special 'an' flag which signals that the next '|'-delineated
-    field contains a comment, i.e. not a proper bid.
+    Check for annotations
+    
+    During bidding a user can annotate their bid. If they do, 
+    the .lin appends a '!' onto the bid and follows it with
+    an 'an' flag and an annotation cell.
 
     Check for these and delete them.
     '''
-    bids = [re.sub(r'\|?an\|(.*)?$', '', x) for x in bids]
+    bids = [re.sub(r'(\|?an\|(.*)?$)|\!', '', x) for x in bids]
     
 
     # check for passout
@@ -516,7 +516,7 @@ def get_play(lin, declarer, contract):
         2) '|mc|' if tricks were claimed
     '''
     
-    play_match = re.search(r'pc\|(.+)(\|pg\|\|)|(\|mc\|)', lin)
+    play_match = re.search(r'\|pc\|(.+)(\|pg\|\|)|(\|mc\|)', lin)
     play_str = play_match.group(1).split('|pg|')
     
     # split into cards

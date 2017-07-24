@@ -20,7 +20,7 @@ all files without this signal.
 import os
 import re
 
-walk_dir = '/home/ubuntu/data/bridge/pairs'
+walk_dir = '/home/ubuntu/data/bridge/'
 
 count = 0
 
