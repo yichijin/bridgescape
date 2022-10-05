@@ -1,5 +1,7 @@
 # bridgescape
 
+pawlu was here 🐢
+
 This is a suite of tools to parse, analyze, and scrape bridge hand data from the online bridge community BridgeBase Online (BBO).
 
 Complete data on bridge hands and tournaments is publicly available on BBO, but to date has been provided in a cryptic format (.lin files). This repository builds on the work of http://github.com/OneTrickPony82/Bridge-Tools to provide the tools to convert these files into human-readable, Python classes.
